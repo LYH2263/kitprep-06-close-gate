@@ -1,6 +1,8 @@
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
-from app.models.models import BomLine, Dish, Ingredient, KitchenOrder, OrderLine
+from app.models.models import BomLine, Dish, Ingredient, KitchenOrder, OrderLine, PrepRun
+from app.services.order_gate import STATUS_OPEN
+from app.services.prep_service import generate_prep
 
 def seed_if_empty(db: Session) -> None:
     if (db.scalar(select(func.count()).select_from(Dish)) or 0) > 0:
@@ -34,4 +36,20 @@ def seed_if_empty(db: Session) -> None:
     db.add(order); db.flush()
     for dcode, portions in [("D-HS", 40), ("D-YC", 30), ("D-JT", 50)]:
         db.add(OrderLine(order_id=order.id, dish_id=dish_ids[dcode], portions=portions))
+    db.flush()
+    # 让演示订单开箱即有一张备料单（可直接体验截档）。
+    generate_prep(db, order.id)
     db.commit()
+
+
+def ensure_demo_prep_run(db: Session) -> None:
+    """老数据卷不会触发 seed_if_empty：给尚无备料单的营业演示订单补一张，幂等。"""
+    order = db.scalars(
+        select(KitchenOrder).where(KitchenOrder.code == "KO-0901")
+    ).first() or db.scalars(select(KitchenOrder).order_by(KitchenOrder.id)).first()
+    if order is None or order.status != STATUS_OPEN:
+        return
+    exists = db.scalar(select(func.count()).select_from(PrepRun).where(PrepRun.order_id == order.id)) or 0
+    if exists > 0:
+        return
+    generate_prep(db, order.id)

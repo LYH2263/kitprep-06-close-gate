@@ -1,16 +1,35 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { onMounted, ref, watch } from 'vue'
 import { api } from '../api'
+import OrderChips from '../components/OrderChips.vue'
+import { isClosed, orderStore } from '../store/order'
+
 const rows = ref<any[]>([])
 const stats = ref<any>({})
-onMounted(async () => {
-  const res = await api('/prep/shortages?order_id=1')
+
+async function refresh() {
+  const id = orderStore.selectedId
+  if (id == null) { rows.value = []; stats.value = {}; return }
+  const res = await api('/prep/shortages?order_id=' + id)
   rows.value = res.shortages; stats.value = res.stats
+}
+
+watch(() => orderStore.selectedId, refresh)
+
+onMounted(async () => {
+  await orderStore.load()
+  await refresh()
 })
 </script>
 <template>
   <h1>缺料便利贴</h1>
   <p class="sub">shortage = need − stock（仅正数）</p>
+  <OrderChips></OrderChips>
+  <p style="margin:0.1rem 0 0.75rem">
+    <span class="badge" :class="isClosed ? 'badge-bad' : 'badge-ok'">
+      {{ isClosed ? '已截档 · 缺料已冻结' : '营业中' }}
+    </span>
+  </p>
   <div class="kp-shortage-sticky" style="max-width:360px;transform:rotate(-1deg);margin-bottom:1rem">
     <h2>⚠ 缺料 {{ stats.shortage_count }} · 合计 {{ stats.total_shortage_qty }}</h2>
     <div v-for="r in rows" :key="r.ingredient_id" class="kp-shortage-item">
