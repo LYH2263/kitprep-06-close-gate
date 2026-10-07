@@ -45,3 +45,11 @@ class PrepRun(Base):
     order_id: Mapped[int] = mapped_column(ForeignKey("kitchen_orders.id"))
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     result_json: Mapped[str] = mapped_column(Text, default="{}")
+
+class PrepSnapshot(Base):
+    """截单那一刻落下的备料快照，钉死不改；与订单闸门状态、活结存分套落库。"""
+    __tablename__ = "prep_snapshots"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    order_id: Mapped[int] = mapped_column(ForeignKey("kitchen_orders.id"))
+    closed_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    result_json: Mapped[str] = mapped_column(Text, default="{}")

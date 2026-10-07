@@ -3,14 +3,15 @@ import { onMounted, ref } from 'vue'
 import { api } from '../api'
 const rows = ref<any[]>([])
 const stats = ref<any>({})
+const closed = ref(false)
 onMounted(async () => {
   const res = await api('/prep/shortages?order_id=1')
-  rows.value = res.shortages; stats.value = res.stats
+  rows.value = res.shortages; stats.value = res.stats; closed.value = !!res.closed
 })
 </script>
 <template>
   <h1>缺料便利贴</h1>
-  <p class="sub">shortage = need − stock（仅正数）</p>
+  <p class="sub">shortage = need − stock（仅正数）<span v-if="closed" class="badge badge-bad">已截档 · 钉死快照</span></p>
   <div class="kp-shortage-sticky" style="max-width:360px;transform:rotate(-1deg);margin-bottom:1rem">
     <h2>⚠ 缺料 {{ stats.shortage_count }} · 合计 {{ stats.total_shortage_qty }}</h2>
     <div v-for="r in rows" :key="r.ingredient_id" class="kp-shortage-item">
